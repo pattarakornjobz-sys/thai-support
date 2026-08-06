@@ -1,0 +1,15 @@
+{
+  "name": "thai-proofreader",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ตรวจปรู๊ฟ — ผู้ช่วยตรวจคำผิดภาษาไทยและตรวจอำนาจอนุมัติเอกสารมูลนิธิ",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "word-extractor": "^1.0.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
