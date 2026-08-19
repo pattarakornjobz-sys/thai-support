@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ตรวจปรู๊ฟ — ผู้ช่วยตรวจคำผิดภาษาไทย</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Taviraj:wght@500;600;700&family=Sarabun:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{
+    --navy:#1B2A4A;
+    --navy-deep:#101A30;
+    --navy-line: rgba(241,236,221,0.09);
+    --paper:#F1ECDD;
+    --paper-dim:#E6DFC8;
+    --paper-line: rgba(27,42,74,0.08);
+    --ink-red:#A6321F;
+    --gold:#B98A2E;
+    --sage:#4A6A57;
+    --text-navy:#1B2A4A;
+    --text-paper:#F1ECDD;
+    --text-paper-dim:#B9C0CE;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--paper-dim);
+    font-family:'Sarabun',sans-serif;
+    color: var(--text-navy);
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Taviraj',serif; margin:0;}
+  ::selection{background: var(--gold); color:var(--navy-deep);}
+
+  /* ---------- cover strip ---------- */
+  .cover{
+    background: var(--navy);
+    background-image: linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+    color: var(--text-paper);
+    border-bottom: 3px solid var(--gold);
+  }
+  .cover-inner{
+    max-width:1180px; margin:0 auto;
+    padding:18px 28px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:center; gap:14px;}
+  .brand-mark{
+    width:44px; height:44px; border-radius:50%;
+    border:2px solid var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Taviraj',serif; font-weight:700; font-size:20px;
+    color:var(--gold); flex-shrink:0;
+  }
+  .brand-text h1{font-size:22px; font-weight:600; letter-spacing:.02em;}
+  .brand-text p{margin:2px 0 0; font-size:12.5px; color: var(--text-paper-dim); letter-spacing:.03em;}
+  #coverStats{display:flex; gap:18px; font-family:'JetBrains Mono',monospace; font-size:12.5px; color: var(--text-paper-dim);}
+  #coverStats span{white-space:nowrap;}
+  #coverStats span b{color:var(--gold); font-weight:600;}
+
+  main{max-width:1180px; margin:0 auto; padding: 40px 28px 80px;}
+
+  /* ---------- hero / dropzone ---------- */
+  .hero{
+    display:grid; grid-template-columns: 1.1fr 1fr; gap:48px; align-items:center;
+    padding: 28px 0 8px;
+  }
+  .hero-text h2{font-size:34px; font-weight:600; line-height:1.3; color:var(--navy);}
+  .hero-text p{font-size:15px; line-height:1.75; color:#4A5570; margin-top:14px; max-width:46ch;}
+
+  .dropzone{
+    position:relative; background:var(--paper);
+    border:1.5px solid var(--paper-line);
+    box-shadow: 0 1px 0 var(--paper-dim), 6px 8px 0 -2px rgba(27,42,74,0.06), 0 18px 34px -18px rgba(16,26,48,0.35);
+    padding: 40px 28px 34px;
+    text-align:center;
+    cursor:pointer;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .dropzone:hover{ transform: translateY(-2px); border-color: var(--gold); }
+  .dropzone.drag-over{ border-color: var(--ink-red); background:#EFE7CC; }
+  .dropzone-tab{
+    position:absolute; top:-14px; left:24px;
+    background: var(--gold); color:var(--navy-deep);
+    font-family:'JetBrains Mono',monospace; font-weight:600; font-size:11px;
+    letter-spacing:.08em; text-transform:uppercase;
+    padding:4px 12px; clip-path: polygon(0 0,100% 0,92% 100%,8% 100%);
+  }
+  .dz-icon{width:46px; height:46px; margin:0 auto 14px; color:var(--navy); opacity:.75;}
+  .dz-title{font-family:'Taviraj',serif; font-size:19px; font-weight:600; margin:0;}
+  .dz-sub{font-size:13.5px; color:#5B6685; margin:8px 0 0;}
+  .dz-link{color:var(--ink-red); text-decoration:underline; text-underline-offset:3px;}
+  .dz-types{font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.06em; color:#8A8264; margin-top:16px;}
+
+  /* ---------- google drive picker ---------- */
+  .drive-section{margin-top:34px;}
+  .drive-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px;}
+  .drive-head h3{font-family:'Taviraj',serif; font-size:18px; font-weight:600; color:var(--navy);}
+  .drive-head .btn-ghost{margin-left:0;}
+  .drive-list{
+    background:var(--paper); border:1.5px solid var(--paper-line);
+    box-shadow: 0 1px 0 var(--paper-dim), 6px 8px 0 -2px rgba(27,42,74,0.06);
+  }
+  .drive-item{
+    display:flex; align-items:center; gap:14px;
+    padding:14px 20px; border-bottom:1px solid var(--paper-line);
+    cursor:pointer; transition:background .15s ease;
+  }
+  .drive-item:last-child{border-bottom:none;}
+  .drive-item:hover{background:rgba(27,42,74,0.04);}
+  .drive-item.disabled{cursor:default; opacity:.55;}
+  .drive-icon{
+    flex-shrink:0; width:34px; height:34px; border-radius:4px;
+    background:var(--navy); color:var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:.02em;
+  }
+  .drive-info{flex:1; min-width:0;}
+  .drive-name{font-size:14px; font-weight:600; color:var(--navy); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .drive-meta{font-family:'JetBrains Mono',monospace; font-size:11px; color:#8A8264; margin-top:2px;}
+  .drive-check{flex-shrink:0; font-size:13px; font-weight:600; color:var(--ink-red);}
+  .drive-empty, .drive-loading, .drive-error{padding:24px 20px; font-size:13.5px; color:#5B6685; text-align:center; line-height:1.7;}
+  .drive-error{color:var(--ink-red);}
+
+  /* ---------- workspace ---------- */
+  .workspace{padding-top:6px;}
+  .workspace-head{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    padding: 6px 0 22px;
+    border-bottom:1px solid var(--paper-line);
+    margin-bottom:26px;
+  }
+  .file-chip{
+    display:flex; align-items:center; gap:8px;
+    background:var(--navy); color:var(--text-paper);
+    font-size:13px; padding:7px 14px;
+  }
+  .file-chip b{color:var(--gold); font-weight:600;}
+  .progress{
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--ink-red);
+    display:flex; align-items:center; gap:8px; min-height:18px;
+  }
+  .spin{
+    width:12px; height:12px; border-radius:50%;
+    border:2px solid rgba(166,50,31,.25); border-top-color:var(--ink-red);
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .btn-ghost, .btn-solid{
+    font-family:'Sarabun',sans-serif; font-size:13px; font-weight:600;
+    border:1.5px solid var(--navy); background:transparent; color:var(--navy);
+    padding:8px 16px; cursor:pointer; transition:.15s ease;
+    margin-left:auto;
+  }
+  .btn-ghost:hover{background:var(--navy); color:var(--text-paper);}
+  .btn-solid{background:var(--gold); border-color:var(--gold); color:var(--navy-deep); margin-left:0;}
+  .btn-solid:hover{background:#a67a24;}
+
+  .ledger-layout{display:grid; grid-template-columns: 1.3fr 1fr; gap:30px; align-items:start;}
+  .ledger-layout.single-col{grid-template-columns: 1fr;}
+
+  /* paper page */
+  .page-panel{
+    position:relative;
+  }
+  .page-panel::before, .page-panel::after{
+    content:''; position:absolute; inset:0;
+    background:var(--paper-dim);
+    z-index:-1;
+  }
+  .page-panel::before{ transform: rotate(-1.1deg) translate(4px,5px); }
+  .page-panel::after{ transform: rotate(0.8deg) translate(-3px,3px); }
+  .page-sheet{
+    background:var(--paper);
+    border:1px solid var(--paper-line);
+    padding:34px 32px;
+    font-size:15px; line-height:2.05;
+    max-height:640px; overflow-y:auto;
+    white-space:normal;
+  }
+  .page-sheet::-webkit-scrollbar{width:8px;}
+  .page-sheet::-webkit-scrollbar-thumb{background:var(--paper-line);}
+
+  mark.err{
+    background:transparent; color:inherit; cursor:pointer;
+    text-decoration: underline wavy var(--ink-red); text-decoration-thickness:2px; text-underline-offset:4px;
+    padding:0 1px; transition: background .15s ease;
+  }
+  mark.err:hover{ background: rgba(166,50,31,.1); }
+  mark.err.flash{ background: rgba(185,138,46,.35); }
+
+  .float-tip{
+    display:none; position:absolute; z-index:50;
+    background:var(--navy-deep); color:var(--text-paper);
+    padding:10px 13px; max-width:260px; font-size:13px; line-height:1.55;
+    box-shadow: 0 10px 26px -8px rgba(0,0,0,.5);
+    border-left:3px solid var(--gold);
+  }
+  .tip-correct{font-weight:700; color:var(--gold); margin-bottom:3px;}
+  .tip-reason{color:var(--text-paper-dim); font-size:12px;}
+
+  /* ledger book panel */
+  .ledger-panel{
+    background:var(--navy); background-image:linear-gradient(180deg,var(--navy),var(--navy-deep));
+    padding:10px 0 10px;
+    max-height:640px; overflow-y:auto;
+    border-top:3px solid var(--gold);
+  }
+  .ledger-panel::-webkit-scrollbar{width:8px;}
+  .ledger-panel::-webkit-scrollbar-thumb{background:rgba(241,236,221,.15);}
+  .ledger-empty{ color:var(--text-paper-dim); font-size:14px; padding:34px 24px; text-align:center; line-height:1.7;}
+  .ledger-row{
+    display:flex; gap:14px; padding:16px 22px;
+    border-bottom:1px solid var(--navy-line);
+    cursor:pointer; transition:background .15s ease;
+  }
+  .ledger-row:hover{background: rgba(241,236,221,.04);}
+  .ledger-row.no-click{cursor:default;}
+  .ledger-row.no-match{opacity:.55;}
+  .ledger-num{
+    font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--gold);
+    flex-shrink:0; padding-top:2px;
+  }
+  .ledger-body{flex:1; min-width:0;}
+  .ledger-cell{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--gold); margin-bottom:4px; letter-spacing:.03em;}
+  .ledger-fix{font-size:14.5px; display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;}
+  .ledger-fix .wrong{color:#D98D7E; text-decoration:line-through; text-decoration-color:var(--ink-red);}
+  .ledger-fix .arrow{color:var(--text-paper-dim); font-size:12px;}
+  .ledger-fix .correct{color:#CDE0D2; font-weight:600;}
+  .ledger-reason{font-size:12.5px; color:var(--text-paper-dim); margin-top:5px; line-height:1.5;}
+
+  .compliance-panel{
+    margin-top:32px; background:var(--paper); border:1px solid var(--paper-line);
+    border-top:3px solid var(--navy);
+    padding:26px 30px 10px;
+  }
+  .compliance-title{font-family:'Taviraj',serif; font-size:19px; font-weight:600; margin-bottom:3px;}
+  .compliance-sub{font-size:12.5px; color:#5B6685; margin-bottom:16px; line-height:1.6;}
+  .compliance-row{display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--paper-line); font-size:14px; line-height:1.65;}
+  .compliance-row:last-child{border-bottom:none;}
+  .compliance-icon{
+    flex-shrink:0; width:20px; height:20px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700; color:#fff; margin-top:2px;
+  }
+  .compliance-icon.ok{background:var(--sage);}
+  .compliance-icon.warn{background:var(--gold); color:var(--navy-deep);}
+  .compliance-icon.error{background:var(--ink-red);}
+  .compliance-icon.info{background:var(--navy);}
+  .compliance-text b{font-weight:700;}
+  .compliance-note{
+    font-family:'JetBrains Mono',monospace; font-size:11px; color:#8A8264;
+    padding:12px 0 16px; letter-spacing:.01em; line-height:1.7;
+  }
+
+  .empty-note{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#8A8264;
+    text-align:center; margin-top:22px; letter-spacing:.02em;
+  }
+  .error-state{
+    background:var(--paper); border-left:3px solid var(--ink-red);
+    padding:20px 24px; font-size:14px; line-height:1.7; color:var(--navy);
+  }
+
+  [hidden]{display:none !important;}
+
+  @media (max-width: 860px){
+    .hero{grid-template-columns:1fr;}
+    .ledger-layout{grid-template-columns:1fr;}
+    .cover-inner{padding:16px 18px;}
+    main{padding:26px 18px 60px;}
+    .hero-text h2{font-size:27px;}
+    .page-panel::before,.page-panel::after{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-inner">
+    <div class="brand">
+      <div class="brand-mark">ป.</div>
+      <div class="brand-text">
+        <h1>ตรวจปรู๊ฟ</h1>
+        <p>ผู้ช่วยตรวจคำผิดภาษาไทยด้วย AI</p>
+      </div>
+    </div>
+    <div id="coverStats"></div>
+  </div>
+</div>
+
+<main>
+  <section class="hero" id="heroSection">
+    <div class="hero-text">
+      <h2>วางไฟล์ลง<br>ให้ปากกาแดงจัดการ</h2>
+      <p>อัปโหลดเอกสาร ระบบจะอ่านและตรวจคำสะกดผิด ไวยากรณ์ และคำที่ใช้ผิดบริบท พร้อมคำแนะนำแก้ไขทีละจุด รองรับทั้งไฟล์ Word/Excel รุ่นใหม่และรุ่นเก่า (.doc/.xls)</p>
+    </div>
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept=".doc,.docx,.xlsx,.xls,.pdf,.jpg,.jpeg,.png" hidden>
+      <div class="dropzone-tab">เอกสาร</div>
+      <svg class="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+        <path d="M4 4h9l7 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/>
+        <path d="M13 4v7h7"/>
+        <path d="M8 14l2.5 2.5L16 11" stroke="#A6321F"/>
+      </svg>
+      <p class="dz-title">ลากไฟล์มาวางที่นี่</p>
+      <p class="dz-sub">หรือ <span class="dz-link">เลือกไฟล์จากเครื่อง</span></p>
+      <p class="dz-types">.DOC · .DOCX · .XLS · .XLSX · .PDF · .JPG</p>
+    </div>
+  </section>
+
+  <section class="drive-section" id="driveSection">
+    <div class="drive-head">
+      <h3>หรือเลือกจากโฟลเดอร์ Google Drive</h3>
+      <button class="btn-ghost" id="driveRefreshBtn" type="button">↻ รีเฟรชรายการ</button>
+    </div>
+    <div class="drive-list" id="driveList">
+      <div class="drive-loading">กำลังโหลดรายการไฟล์...</div>
+    </div>
+  </section>
+
+  <p class="empty-note" id="heroNote">ตรวจสูงสุดประมาณ 8 ส่วน / 20 หน้า ต่อไฟล์ เพื่อความรวดเร็ว — ไฟล์ยาวมากอาจตรวจได้ไม่ครบทั้งหมด</p>
+
+  <section class="workspace" id="workspace" hidden>
+    <div class="workspace-head">
+      <div class="file-chip" id="fileChip"></div>
+      <div class="progress" id="progress"></div>
+      <button class="btn-solid" id="copyBtn" hidden>คัดลอกข้อความที่แก้ไขแล้ว</button>
+      <button class="btn-ghost" id="resetBtn">ตรวจไฟล์ใหม่</button>
+    </div>
+    <div class="ledger-layout" id="ledgerLayout">
+      <div class="page-panel" id="pagePanelWrap">
+        <div class="page-sheet" id="pagePanel"></div>
+      </div>
+      <aside class="ledger-panel" id="ledgerPanel"></aside>
+    </div>
+    <section class="compliance-panel" id="compliancePanel" hidden></section>
+  </section>
+</main>
+
+<script>
+(function(){
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const heroSection = document.getElementById('heroSection');
+  const heroNote = document.getElementById('heroNote');
+  const workspace = document.getElementById('workspace');
+  const fileChip = document.getElementById('fileChip');
+  const progressEl = document.getElementById('progress');
+  const resetBtn = document.getElementById('resetBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const ledgerLayout = document.getElementById('ledgerLayout');
+  const pagePanelWrap = document.getElementById('pagePanelWrap');
+  const pagePanel = document.getElementById('pagePanel');
+  const ledgerPanel = document.getElementById('ledgerPanel');
+  const coverStats = document.getElementById('coverStats');
+  const compliancePanel = document.getElementById('compliancePanel');
+  const driveSection = document.getElementById('driveSection');
+  const driveList = document.getElementById('driveList');
+  const driveRefreshBtn = document.getElementById('driveRefreshBtn');
+
+  let currentText = '';
+  let currentErrors = [];
+
+  // ---------- reference data: มูลนิธิส่งเสริมศิลปาชีพฯ ผู้มีอำนาจลงนาม ----------
+  // ค่าเริ่มต้น (fallback) ใช้กรณียังไม่ได้ตั้งค่า Supabase หรือโหลดข้อมูลไม่สำเร็จ
+  // ยืนยันแล้ว (ณ ส.ค. 2569) — ถ้าตั้งค่า Supabase ไว้ ระบบจะโหลดชุดล่าสุดจากฐานข้อมูลมาทับค่านี้แทน
+  const DEFAULT_REFERENCE_DATA = {
+    ladder: {
+      1: { name: 'ชัยยุทธ แจงบัว', title: 'หัวหน้าแผนกอาวุโส แผนกสนับสนุนการเงินมูลนิธิ 2 สำนักงานพระคลังข้างที่ / ผู้ช่วยหัวหน้าสำนักงานการเงินและบัญชีมูลนิธิ' },
+      2: { name: 'กัลยารัตน์ บุญส่ง', title: 'หัวหน้ากองสนับสนุนการเงินมูลนิธิ สำนักงานพระคลังข้างที่ / รองหัวหน้าสำนักงานการเงินและบัญชีมูลนิธิ 1' },
+      3: { name: 'กุลวดี ล้อมทอง วีระภัทรานนท์', title: 'หัวหน้าสำนักงานสนับสนุนมูลนิธิและโครงการ สำนักงานพระคลังข้างที่ / หัวหน้าสำนักงานการเงินและบัญชีมูลนิธิ' },
+      4: { name: 'ชัยรัตน์ ภัทรธีรังกูร', title: 'กรรมการและผู้ช่วยเหรัญญิก' },
+      5: { name: 'พิธาน เหี้ยมโท้', title: 'กรรมการและเหรัญญิก' },
+      6: { name: 'ธรรมนิธิ วนิชย์ถนอม', title: 'รองประธานกรรมการ', altOf: 7 },
+      7: { name: 'สมชาย กาญจนมณี', title: 'รองประธานกรรมการ', altOf: 6 },
+      8: { name: 'สถิตย์พงษ์ สุขวิมล', title: 'รองประธานกรรมการและเลขาธิการ' }
+    },
+    // วงเงิน -> ตำแหน่งในบันไดที่ต้องปรากฏ (ใช้ได้กับเอกสาร 3 ประเภทการเงิน: จัดซื้อ/จัดจ้าง, อนุมัติจ่าย, เพื่อทราบและลงนาม)
+    tiers: [
+      { key: 'ไม่เกิน 2 ล้านบาท', max: 2000000, positions: [1, 2, 3, 4, 5] },
+      { key: 'เกิน 2 ล้านบาท (ไม่เกิน 10 ล้าน)', max: 10000000, positions: [2, 3, 4, 5, 7] },
+      { key: 'เกิน 10 ล้านบาท', max: Infinity, positions: [4, 5, 6, 7, 8] }
+    ]
+  };
+
+  // หมวดเอกสารที่ยืนยันกติกาสายลงนามตามวงเงินแล้ว (กลุ่มอื่นจะตรวจแค่โครงสร้างหัวข้อ ไม่ตรวจสายลงนาม)
+  const TIER_ELIGIBLE_CATEGORIES = ['purchase', 'payment', 'acknowledge'];
+
+  let REFERENCE_DATA = JSON.parse(JSON.stringify(DEFAULT_REFERENCE_DATA));
+  // JSON round-trip loses Infinity -> fix back up
+  REFERENCE_DATA.tiers[REFERENCE_DATA.tiers.length - 1].max = Infinity;
+  let DOCUMENT_TEMPLATES = [];
+
+  // ---------- Supabase (ไม่บังคับ) ----------
+  // แก้ 2 ค่านี้หลังสร้างโปรเจกต์ Supabase แล้วรัน supabase-schema.sql
+  // ถ้าเว้นว่างไว้ แอปจะใช้ค่าเริ่มต้นด้านบนแทน (ทำงานได้ปกติ แค่ไม่มี log และแก้รายชื่อผ่าน DB ไม่ได้)
+  const SUPABASE_URL = '';
+  const SUPABASE_ANON_KEY = '';
+  const supabaseClient = (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  async function loadReferenceData(){
+    if (!supabaseClient) return;
+    try {
+      const [signersRes, tiersRes, templatesRes] = await Promise.all([
+        supabaseClient.from('signers').select('*').eq('active', true),
+        supabaseClient.from('approval_tiers').select('*').order('sort_order'),
+        supabaseClient.from('document_templates').select('*')
+      ]);
+      if (signersRes.data && signersRes.data.length) {
+        const ladder = {};
+        signersRes.data.forEach(s => {
+          ladder[s.position] = { name: s.name, title: s.title, altOf: s.alt_of || undefined };
+        });
+        REFERENCE_DATA.ladder = ladder;
+      }
+      if (tiersRes.data && tiersRes.data.length) {
+        REFERENCE_DATA.tiers = tiersRes.data.map(t => ({
+          key: t.tier_key,
+          max: (t.max_amount === null || t.max_amount === undefined) ? Infinity : Number(t.max_amount),
+          positions: t.positions
+        }));
+      }
+      if (templatesRes.data) DOCUMENT_TEMPLATES = templatesRes.data;
+    } catch (e) {
+      console.error('โหลดข้อมูลอ้างอิงจาก Supabase ไม่สำเร็จ ใช้ค่าเริ่มต้นในไฟล์แทน', e);
+    }
+  }
+
+  const referenceDataReady = loadReferenceData();
+
+  async function logCheck(payload){
+    if (!supabaseClient) return;
+    try {
+      await supabaseClient.from('check_logs').insert({
+        file_name: payload.fileName || null,
+        file_type: payload.fileType || null,
+        detected_category: payload.category || null,
+        amount_baht: (typeof payload.amount === 'number') ? payload.amount : null,
+        spelling_error_count: payload.errorCount || 0,
+        compliance_findings: payload.findings || null
+      });
+    } catch (e) {
+      console.error('บันทึกประวัติการตรวจไม่สำเร็จ', e);
+    }
+  }
+
+  function tierForAmount(amount){
+    return REFERENCE_DATA.tiers.find(t => amount <= t.max) || REFERENCE_DATA.tiers[REFERENCE_DATA.tiers.length - 1];
+  }
+
+  function coreName(s){
+    return String(s || '')
+      .replace(/^(ว่าที่ร้อยตรี|พันตำรวจเอก|พลอากาศเอก|พันโท|นางสาว|นาง|นาย|ดร\.)\s*/g, '')
+      .replace(/\s+/g, '').trim();
+  }
+
+  function nameMatches(a, b){
+    if (!a || !b) return false;
+    const ca = coreName(a), cb = coreName(b);
+    if (!ca || !cb) return false;
+    return ca.includes(cb) || cb.includes(ca);
+  }
+
+  function checkSections(text, tmpl){
+    if (!tmpl || !tmpl.sections) return [];
+    const sections = Array.isArray(tmpl.sections) ? tmpl.sections : [];
+    const findings = [];
+    sections.forEach(label => {
+      const core = String(label).replace(/^[0-9.\s]+/, '').split('(')[0].trim();
+      if (!core) return;
+      if (text.includes(core)) {
+        findings.push({ type: 'ok', text: `พบหัวข้อ "<b>${escapeHtml(label)}</b>" ตามรูปแบบเอกสารนี้` });
+      } else {
+        findings.push({ type: 'warn', text: `ไม่พบหัวข้อ "<b>${escapeHtml(label)}</b>" ซึ่งควรมีตามรูปแบบเอกสารนี้` });
+      }
+    });
+    return findings;
+  }
+
+  function validateCompliance(result, text){
+    if (!result || !result.is_foundation_memo) return null;
+    const findings = [];
+    const category = result.category || null;
+    const tmpl = category ? DOCUMENT_TEMPLATES.find(t => t.code === category) : null;
+
+    if (tmpl) {
+      findings.push({ type: 'info', text: `ตรวจพบว่าเอกสารนี้ตรงกับรูปแบบ "<b>${escapeHtml(tmpl.label)}</b>"` });
+    }
+
+    if (TIER_ELIGIBLE_CATEGORIES.includes(category)) {
+      const amount = (typeof result.amount_baht === 'number') ? result.amount_baht : null;
+      if (amount == null) {
+        findings.push({ type: 'warn', text: 'ไม่พบยอดวงเงินที่ระบุชัดเจนในเอกสาร — ระบบเทียบระดับอำนาจอนุมัติตามวงเงินไม่ได้ในกรณีนี้ กรุณาตรวจด้วยตาอีกครั้ง' });
+      } else {
+        const tier = tierForAmount(amount);
+        findings.push({ type: 'info', text: `พบวงเงิน <b>${amount.toLocaleString()} บาท</b> → ควรอยู่ในกลุ่มอำนาจอนุมัติ "<b>${tier.key}</b>"` });
+        tier.positions.forEach(posId => {
+          const entry = REFERENCE_DATA.ladder[posId];
+          if (!entry) return;
+          const alt = entry.altOf ? REFERENCE_DATA.ladder[entry.altOf] : null;
+          const found = (result.signers || []).find(s => nameMatches(s.name, entry.name) || (alt && nameMatches(s.name, alt.name)));
+          if (found) {
+            findings.push({ type: 'ok', text: `พบผู้ลงนาม <b>${escapeHtml(found.name)}</b> ตรงกับผู้มีอำนาจ (${escapeHtml(entry.title)})` });
+          } else {
+            const altText = alt ? ` หรือ ${escapeHtml(alt.name)} (${escapeHtml(alt.title)})` : '';
+            findings.push({ type: 'error', text: `ไม่พบลายเซ็น/ชื่อของ <b>${escapeHtml(entry.name)}</b> (${escapeHtml(entry.title)})${altText} ซึ่งควรมีในเอกสารระดับวงเงินนี้` });
+          }
+        });
+        (result.signers || []).forEach(s => {
+          const known = Object.values(REFERENCE_DATA.ladder).some(l => nameMatches(s.name, l.name));
+          if (!known) {
+            findings.push({ type: 'warn', text: `พบชื่อ "<b>${escapeHtml(s.name)}</b>" ซึ่งไม่อยู่ในบันทึกรายชื่อผู้มีอำนาจลงนามปัจจุบัน — โปรดตรวจสอบว่าเป็นชื่อที่สะกดถูกต้อง หรือเป็นบุคคลที่ยังไม่ได้อัปเดตในระบบ` });
+          }
+        });
+      }
+    } else if (category && category !== 'other') {
+      findings.push({ type: 'warn', text: 'รูปแบบเอกสารนี้ยังไม่ได้ยืนยันกติกาสายลงนามอย่างครบถ้วน ระบบจะตรวจเฉพาะโครงสร้างหัวข้อด้านล่าง ยังไม่ตรวจว่าผู้ลงนามถูกต้องตามอำนาจหรือไม่' });
+    }
+
+    if (tmpl) {
+      findings.push(...checkSections(text, tmpl));
+      if (tmpl.notes) {
+        findings.push({ type: 'info', text: `หมายเหตุ: ${escapeHtml(tmpl.notes)}` });
+      }
+    }
+
+    return findings;
+  }
+
+  function renderCompliance(findings){
+    if (!findings || !findings.length) {
+      compliancePanel.hidden = true;
+      compliancePanel.innerHTML = '';
+      return;
+    }
+    const iconChar = { ok: '✓', warn: '!', error: '✕', info: 'i' };
+    compliancePanel.hidden = false;
+    compliancePanel.innerHTML = `
+      <div class="compliance-title">ตรวจอำนาจอนุมัติและผู้ลงนาม</div>
+      <div class="compliance-sub">เทียบกับบันไดผู้มีอำนาจลงนามของมูลนิธิที่บันทึกไว้ในระบบ (ข้อมูล ณ ส.ค. 2569)</div>
+      ${findings.map(f => `<div class="compliance-row"><span class="compliance-icon ${f.type}">${iconChar[f.type] || ''}</span><span class="compliance-text">${f.text}</span></div>`).join('')}
+      <div class="compliance-note">การตรวจนี้เป็นการช่วยกรองเบื้องต้นด้วย AI + กติกาที่บันทึกไว้ อาจมีความคลาดเคลื่อนได้ โปรดตรวจสอบกับผู้มีอำนาจอีกครั้งก่อนดำเนินการจริง</div>`;
+  }
+
+  async function checkCompliance(text){
+    const COMPLIANCE_SYSTEM_PROMPT = "คุณคือผู้ช่วยตรวจสอบเอกสารบันทึกข้อความของมูลนิธิส่งเสริมศิลปาชีพ ในสมเด็จพระนางเจ้าสิริกิติ์ พระบรมราชินีนาถ พระบรมราชชนนีพันปีหลวง อ่านข้อความที่ผู้ใช้ส่งมา แล้วสกัดข้อมูล ตอบเป็น JSON เท่านั้น ไม่มีคำอธิบายอื่นใด รูปแบบคือ {\"is_foundation_memo\": true หรือ false, \"category\": \"purchase\"|\"payment\"|\"acknowledge\"|\"personnel_hire\"|\"order\"|\"external_letter\"|\"other\", \"amount_baht\": ตัวเลขจำนวนเงินบาทที่ขออนุมัติหรือเกี่ยวข้องในเอกสาร (number หรือ null ถ้าไม่ระบุ/ไม่มี ห้ามเดา), \"signers\": [{\"name\":\"ชื่อ-นามสกุลผู้ลงนามที่ปรากฏจริงในเอกสาร ไม่ต้องมีคำนำหน้ายศหรือคำนำหน้าชื่อ\",\"title\":\"ตำแหน่งที่ระบุกำกับไว้ใต้ชื่อ ถ้ามี\"}]} ให้ is_foundation_memo=true เฉพาะเมื่อเอกสารมีลักษณะเป็นบันทึกข้อความหรือคำสั่งของมูลนิธิที่มีการลงนาม ถ้าไม่ใช่ให้ตอบ is_foundation_memo=false, category=\"other\", amount_baht=null, signers=[] หมวด category ให้เลือกตามนี้: purchase = ขออนุมัติจัดซื้อ/จัดจ้าง, payment = ขออนุมัติจ่าย, acknowledge = เพื่อทราบและลงนาม (ไม่ใช่เรื่องบุคคล), personnel_hire = จัดจ้าง/บรรจุ/พ้นจากหน้าที่พนักงาน, order = คำสั่งมูลนิธิ (ลงนามคนเดียวโดยเลขาธิการ), external_letter = หนังสือถึงหน่วยงานภายนอก. ดึงเฉพาะชื่อที่ปรากฏจริงในวงเล็บใต้เส้นลายเซ็นเท่านั้น ห้ามเดาหรือแต่งชื่อขึ้นมาเอง";
+    try {
+      const raw = await callClaude({
+        model: 'claude-sonnet-5',
+        max_tokens: 2048,
+        system: COMPLIANCE_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: text.slice(0, 6000) }]
+      });
+      return parseJsonSafe(raw);
+    } catch (e) {
+      console.error('compliance check failed', e);
+      return null;
+    }
+  }
+
+  // ---------- dropzone events ----------
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault(); dropzone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+  resetBtn.addEventListener('click', resetApp);
+  document.addEventListener('click', hideTooltip);
+
+  copyBtn.addEventListener('click', async () => {
+    const corrected = buildCorrectedText(currentText, currentErrors);
+    try {
+      await navigator.clipboard.writeText(corrected);
+      copyBtn.textContent = 'คัดลอกแล้ว ✓';
+    } catch (e) {
+      copyBtn.textContent = 'คัดลอกไม่สำเร็จ';
+    }
+    setTimeout(() => copyBtn.textContent = 'คัดลอกข้อความที่แก้ไขแล้ว', 1800);
+  });
+
+  // ---------- Google Drive picker ----------
+  driveRefreshBtn.addEventListener('click', loadDriveFiles);
+
+  function fmtBytes(n){
+    n = Number(n) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function extBadge(name, mimeType){
+    if (mimeType === 'application/vnd.google-apps.document') return 'DOCS';
+    if (mimeType === 'application/vnd.google-apps.spreadsheet') return 'SHEETS';
+    if (mimeType === 'application/vnd.google-apps.presentation') return 'SLIDES';
+    const ext = (name.split('.').pop() || '').toUpperCase();
+    return ext.slice(0, 5);
+  }
+
+  async function loadDriveFiles(){
+    driveList.innerHTML = '<div class="drive-loading">กำลังโหลดรายการไฟล์...</div>';
+    try {
+      const res = await fetch('/api/drive-list');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'โหลดรายการไฟล์ไม่สำเร็จ');
+      renderDriveList(data.files || []);
+    } catch (e) {
+      console.error(e);
+      driveList.innerHTML = `<div class="drive-error">${escapeHtml(e.message || String(e))}</div>`;
+    }
+  }
+
+  function renderDriveList(files){
+    if (!files.length) {
+      driveList.innerHTML = '<div class="drive-empty">ยังไม่มีไฟล์ในโฟลเดอร์ที่ตั้งค่าไว้</div>';
+      return;
+    }
+    driveList.innerHTML = files.map(f => `
+      <div class="drive-item" data-id="${escapeHtml(f.id)}">
+        <div class="drive-icon">${escapeHtml(extBadge(f.name, f.mimeType))}</div>
+        <div class="drive-info">
+          <div class="drive-name">${escapeHtml(f.name)}</div>
+          <div class="drive-meta">${f.modifiedTime ? new Date(f.modifiedTime).toLocaleString('th-TH') : ''}${f.size ? ' · ' + fmtBytes(f.size) : ''}</div>
+        </div>
+        <div class="drive-check">ตรวจไฟล์นี้ →</div>
+      </div>`).join('');
+    driveList.querySelectorAll('.drive-item').forEach(el => {
+      el.addEventListener('click', () => selectDriveFile(el.dataset.id, el));
+    });
+  }
+
+  async function selectDriveFile(fileId, itemEl){
+    if (itemEl) itemEl.classList.add('disabled');
+    try {
+      const res = await fetch('/api/drive-file?fileId=' + encodeURIComponent(fileId));
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'ดึงไฟล์ไม่สำเร็จ');
+      const bin = atob(data.data);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const file = new File([bytes], data.name, { type: data.mimeType });
+      handleFile(file);
+    } catch (e) {
+      console.error(e);
+      if (itemEl) itemEl.classList.remove('disabled');
+      showWorkspace();
+      updateProgress('');
+      showErrorState(e);
+    }
+  }
+
+  loadDriveFiles();
+
+  function resetApp(){
+    heroSection.hidden = false; heroNote.hidden = false; driveSection.hidden = false;
+    workspace.hidden = true;
+    fileInput.value = '';
+    currentText = ''; currentErrors = [];
+    coverStats.innerHTML = '';
+    copyBtn.hidden = true;
+    compliancePanel.hidden = true;
+    compliancePanel.innerHTML = '';
+  }
+
+  function showWorkspace(){
+    heroSection.hidden = true; heroNote.hidden = true; driveSection.hidden = true;
+    workspace.hidden = false;
+    ledgerLayout.classList.remove('single-col');
+    pagePanelWrap.hidden = false;
+    copyBtn.hidden = true;
+    compliancePanel.hidden = true;
+    compliancePanel.innerHTML = '';
+  }
+
+  function setFileChip(file){
+    fileChip.innerHTML = `<b>${escapeHtml(file.name)}</b>`;
+  }
+
+  function updateProgress(msg){
+    progressEl.innerHTML = msg ? `<span class="spin"></span><span>${escapeHtml(msg)}</span>` : '';
+  }
+
+  function showErrorState(err){
+    pagePanelWrap.hidden = false;
+    ledgerLayout.classList.add('single-col');
+    pagePanel.parentElement.hidden = false;
+    pagePanel.innerHTML = '';
+    ledgerPanel.innerHTML = '';
+    pagePanelWrap.innerHTML = `<div class="error-state">เกิดข้อผิดพลาดระหว่างตรวจไฟล์: ${escapeHtml(err && err.message ? err.message : String(err))}<br>ลองใหม่อีกครั้ง หรือใช้ไฟล์อื่น</div>`;
+  }
+
+  // ---------- helpers ----------
+  function escapeHtml(s){
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+
+  function fileToBase64(file){
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+
+  function chunkText(text, maxLen){
+    maxLen = maxLen || 2000;
+    const paras = text.split(/\n{2,}/);
+    const chunks = [];
+    let cur = '';
+    for (let p of paras) {
+      if ((cur + '\n\n' + p).length > maxLen && cur.length) {
+        chunks.push(cur); cur = p;
+      } else {
+        cur = cur ? cur + '\n\n' + p : p;
+      }
+      while (cur.length > maxLen) {
+        chunks.push(cur.slice(0, maxLen));
+        cur = cur.slice(maxLen);
+      }
+    }
+    if (cur) chunks.push(cur);
+    return chunks;
+  }
+
+  // ---------- Claude API calls ----------
+  const TEXT_SYSTEM_PROMPT = "คุณคือกองบรรณาธิการตรวจพิสูจน์อักษรภาษาไทยมืออาชีพ ตรวจข้อความที่ผู้ใช้ส่งมา หาคำสะกดผิด คำที่ผิดหลักไวยากรณ์ หรือคำที่ใช้ผิดบริบท ตอบกลับเป็น JSON เท่านั้น ห้ามมีคำอธิบายหรือ markdown code fence ใดๆ นอกเหนือจาก JSON รูปแบบคือ {\"errors\":[{\"wrong\":\"คำหรือวลีที่ผิด ต้องคัดลอกมาจากต้นฉบับตรงตัวทุกตัวอักษร ห้ามดัดแปลง\",\"correct\":\"คำหรือวลีที่ถูกต้อง\",\"reason\":\"เหตุผลสั้นมาก ไม่เกิน 8 คำ\"}]} ถ้าไม่พบข้อผิดพลาดเลยให้ตอบ {\"errors\":[]} อย่ารายงานปัญหาเรื่องรูปแบบการเว้นวรรคหรือการจัดหน้า ให้เน้นเฉพาะคำสะกดผิด ไวยากรณ์ผิด และคำผิดบริบทเท่านั้น";
+
+  const XLSX_SYSTEM_PROMPT = "คุณคือกองบรรณาธิการตรวจพิสูจน์อักษรภาษาไทยมืออาชีพ ผู้ใช้จะส่งข้อความหลายบรรทัด แต่ละบรรทัดขึ้นต้นด้วยตำแหน่งเซลล์ในวงเล็บเหลี่ยม เช่น [Sheet1!A1] ตามด้วยข้อความในเซลล์นั้น ตรวจหาคำสะกดผิดหรือคำผิดบริบทในแต่ละบรรทัด ตอบกลับเป็น JSON เท่านั้น ห้ามมี markdown code fence รูปแบบคือ {\"errors\":[{\"cell\":\"Sheet1!A1\",\"wrong\":\"คำที่ผิด คัดลอกจากต้นฉบับตรงตัว\",\"correct\":\"คำที่ถูกต้อง\",\"reason\":\"เหตุผลสั้นมาก ไม่เกิน 8 คำ\"}]} ถ้าไม่พบข้อผิดพลาดเลยให้ตอบ {\"errors\":[]}";
+
+  const IMAGE_SYSTEM_PROMPT = "คุณคือกองบรรณาธิการตรวจพิสูจน์อักษรภาษาไทยมืออาชีพ อ่านข้อความภาษาไทยทั้งหมดที่ปรากฏในภาพนี้อย่างละเอียด แล้วตรวจหาคำสะกดผิด คำผิดหลักไวยากรณ์ หรือคำผิดบริบท ตอบกลับเป็น JSON เท่านั้น ห้ามมี markdown code fence รูปแบบคือ {\"extracted_text\":\"ข้อความทั้งหมดที่อ่านได้จากภาพ เรียงตามลำดับที่ปรากฏ\",\"errors\":[{\"wrong\":\"คำที่ผิด ต้องตรงกับข้อความใน extracted_text ทุกตัวอักษร\",\"correct\":\"คำที่ถูกต้อง\",\"reason\":\"เหตุผลสั้นมาก ไม่เกิน 8 คำ\"}]} ถ้าอ่านข้อความในภาพไม่ได้เลยให้ตอบ {\"extracted_text\":\"\",\"errors\":[]}";
+
+  function parseJsonSafe(raw){
+    try {
+      const clean = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+      return JSON.parse(clean);
+    } catch (e) {
+      console.error('JSON parse failed', e, raw);
+      return null;
+    }
+  }
+
+  async function callClaude(body){
+    const res = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error('เรียก AI ไม่สำเร็จ (' + res.status + ')');
+    const data = await res.json();
+    const textBlock = (data.content || []).find(b => b.type === 'text');
+    return textBlock ? textBlock.text : '';
+  }
+
+  async function checkTextChunk(text){
+    const raw = await callClaude({
+      model: 'claude-sonnet-5',
+      max_tokens: 2048,
+      system: TEXT_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: text }]
+    });
+    const parsed = parseJsonSafe(raw);
+    return (parsed && Array.isArray(parsed.errors)) ? parsed.errors : [];
+  }
+
+  async function checkXlsxBatch(joinedLines){
+    const raw = await callClaude({
+      model: 'claude-sonnet-5',
+      max_tokens: 2048,
+      system: XLSX_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: joinedLines }]
+    });
+    const parsed = parseJsonSafe(raw);
+    return (parsed && Array.isArray(parsed.errors)) ? parsed.errors : [];
+  }
+
+  async function checkImage(base64, mediaType){
+    const raw = await callClaude({
+      model: 'claude-sonnet-5',
+      max_tokens: 2048,
+      system: IMAGE_SYSTEM_PROMPT,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: 'อ่านและตรวจคำผิดในภาพนี้' }
+        ]
+      }]
+    });
+    const parsed = parseJsonSafe(raw);
+    return {
+      extracted_text: parsed && parsed.extracted_text ? parsed.extracted_text : '',
+      errors: (parsed && Array.isArray(parsed.errors)) ? parsed.errors : []
+    };
+  }
+
+  async function processFlowText(text){
+    const chunks = chunkText(text, 2000).slice(0, 8);
+    let allErrors = [];
+    for (let i = 0; i < chunks.length; i++) {
+      updateProgress(`กำลังตรวจส่วนที่ ${i + 1}/${chunks.length}...`);
+      const errs = await checkTextChunk(chunks[i]);
+      allErrors = allErrors.concat(errs);
+    }
+    return allErrors;
+  }
+
+  async function processXlsxLines(lines){
+    const batches = [];
+    let cur = [], curLen = 0;
+    lines.forEach(l => {
+      const s = `[${l.ref}] ${l.text}`;
+      if (curLen + s.length > 2000 && cur.length) { batches.push(cur); cur = []; curLen = 0; }
+      cur.push(s); curLen += s.length + 1;
+    });
+    if (cur.length) batches.push(cur);
+    const capped = batches.slice(0, 8);
+    let allErrors = [];
+    for (let i = 0; i < capped.length; i++) {
+      updateProgress(`กำลังตรวจชุดที่ ${i + 1}/${capped.length}...`);
+      const errs = await checkXlsxBatch(capped[i].join('\n'));
+      allErrors = allErrors.concat(errs);
+    }
+    return allErrors;
+  }
+
+  // ---------- file extraction ----------
+  async function handleDocx(file){
+    updateProgress('กำลังอ่านไฟล์ Word...');
+    const buf = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer: buf });
+    const text = result.value || '';
+    const errors = await processFlowText(text);
+    return { text, errors };
+  }
+
+  async function handleLegacyDoc(file){
+    updateProgress('กำลังแปลงไฟล์ .doc (รุ่นเก่า)...');
+    const base64 = await fileToBase64(file);
+    const res = await fetch('/api/extract-doc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: base64 })
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'อ่านไฟล์ .doc ไม่สำเร็จ');
+    }
+    const data = await res.json();
+    const text = data.text || '';
+    const errors = await processFlowText(text);
+    return { text, errors };
+  }
+
+  async function handleXlsx(file){
+    updateProgress('กำลังอ่านไฟล์ Excel...');
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    let lines = [];
+    wb.SheetNames.forEach(name => {
+      const sheet = wb.Sheets[name];
+      Object.keys(sheet).forEach(key => {
+        if (key[0] === '!') return;
+        const cell = sheet[key];
+        if (cell && typeof cell.v === 'string' && /[ก-๙]/.test(cell.v)) {
+          lines.push({ ref: `${name}!${key}`, text: cell.v });
+        }
+      });
+    });
+    lines = lines.slice(0, 300);
+    const errors = await processXlsxLines(lines);
+    return { lines, errors };
+  }
+
+  async function extractPdf(file){
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const maxPages = Math.min(pdf.numPages, 20);
+    let textParts = [], scanned = [];
+    for (let p = 1; p <= maxPages; p++) {
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      const pageText = content.items.map(it => it.str).join(' ').trim();
+      if (pageText.length > 15) {
+        textParts.push(`[หน้า ${p}]\n${pageText}`);
+      } else if (scanned.length < 5) {
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width; canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        scanned.push({ page: p, base64: dataUrl.split(',')[1] });
+      }
+    }
+    return { text: textParts.join('\n\n'), scanned, totalPages: pdf.numPages, processedPages: maxPages };
+  }
+
+  async function handlePdf(file){
+    updateProgress('กำลังอ่านไฟล์ PDF...');
+    const { text, scanned } = await extractPdf(file);
+    let allErrors = [];
+    let fullText = text;
+    if (text.trim()) {
+      const errs = await processFlowText(text);
+      allErrors = allErrors.concat(errs);
+    }
+    for (const s of scanned) {
+      updateProgress(`กำลังอ่านภาพหน้า ${s.page} ด้วย AI...`);
+      const { extracted_text, errors } = await checkImage(s.base64, 'image/jpeg');
+      if (extracted_text) {
+        fullText += `\n\n[หน้า ${s.page} - ภาพสแกน]\n${extracted_text}`;
+        allErrors = allErrors.concat(errors);
+      }
+    }
+    return { text: fullText, errors: allErrors };
+  }
+
+  async function handleImage(file){
+    updateProgress('กำลังอ่านภาพด้วย AI...');
+    const base64 = await fileToBase64(file);
+    const mediaType = file.type || 'image/jpeg';
+    const { extracted_text, errors } = await checkImage(base64, mediaType);
+    return { text: extracted_text, errors };
+  }
+
+  // ---------- rendering ----------
+  function buildAnnotated(text, errors){
+    const ranges = [];
+    errors.forEach((e, idx) => {
+      if (!e.wrong) return;
+      let from = 0, found = -1;
+      while (true) {
+        const i = text.indexOf(e.wrong, from);
+        if (i === -1) break;
+        const overlaps = ranges.some(r => i < r.end && i + e.wrong.length > r.start);
+        if (!overlaps) { found = i; break; }
+        from = i + 1;
+      }
+      if (found !== -1) ranges.push({ start: found, end: found + e.wrong.length, idx });
+    });
+    ranges.sort((a, b) => a.start - b.start);
+    let html = '', cursor = 0;
+    ranges.forEach(r => {
+      html += escapeHtml(text.slice(cursor, r.start));
+      html += `<mark class="err" id="err-${r.idx}" data-idx="${r.idx}">${escapeHtml(text.slice(r.start, r.end))}</mark>`;
+      cursor = r.end;
+    });
+    html += escapeHtml(text.slice(cursor));
+    return { html, matchedIdx: ranges.map(r => r.idx) };
+  }
+
+  function buildCorrectedText(text, errors){
+    const ranges = [];
+    errors.forEach(e => {
+      if (!e.wrong) return;
+      let from = 0, found = -1;
+      while (true) {
+        const i = text.indexOf(e.wrong, from);
+        if (i === -1) break;
+        const overlaps = ranges.some(r => i < r.end && i + e.wrong.length > r.start);
+        if (!overlaps) { found = i; break; }
+        from = i + 1;
+      }
+      if (found !== -1) ranges.push({ start: found, end: found + e.wrong.length, correct: e.correct || e.wrong });
+    });
+    ranges.sort((a, b) => a.start - b.start);
+    let result = '', cursor = 0;
+    ranges.forEach(r => { result += text.slice(cursor, r.start) + r.correct; cursor = r.end; });
+    result += text.slice(cursor);
+    return result;
+  }
+
+  function renderDocView(text, errors){
+    currentText = text; currentErrors = errors;
+    const { html, matchedIdx } = buildAnnotated(text, errors);
+    pagePanel.innerHTML = html.replace(/\n/g, '<br>');
+    renderLedger(errors, matchedIdx);
+    coverStats.innerHTML = `<span>${text.length.toLocaleString()} ตัวอักษร</span><span><b>${errors.length}</b> จุดที่พบ</span>`;
+    copyBtn.hidden = errors.length === 0;
+    attachErrHandlers();
+  }
+
+  function renderLedger(errors, matchedIdx){
+    if (!errors.length) {
+      ledgerPanel.innerHTML = '<div class="ledger-empty">ไม่พบคำผิด<br>เอกสารนี้เรียบร้อยดี</div>';
+      return;
+    }
+    ledgerPanel.innerHTML = errors.map((e, idx) => {
+      const matched = matchedIdx.includes(idx);
+      return `<div class="ledger-row ${matched ? '' : 'no-match'}" data-idx="${idx}">
+        <span class="ledger-num">${String(idx + 1).padStart(2, '0')}</span>
+        <div class="ledger-body">
+          <div class="ledger-fix"><span class="wrong">${escapeHtml(e.wrong || '')}</span><span class="arrow">→</span><span class="correct">${escapeHtml(e.correct || '')}</span></div>
+          <div class="ledger-reason">${escapeHtml(e.reason || '')}</div>
+        </div>
+      </div>`;
+    }).join('');
+    ledgerPanel.querySelectorAll('.ledger-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const target = document.getElementById('err-' + row.dataset.idx);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.classList.add('flash');
+          setTimeout(() => target.classList.remove('flash'), 1200);
+        }
+      });
+    });
+  }
+
+  function renderXlsxLedger(lines, errors){
+    currentText = ''; currentErrors = [];
+    ledgerLayout.classList.add('single-col');
+    pagePanelWrap.hidden = true;
+    copyBtn.hidden = true;
+    coverStats.innerHTML = `<span>${lines.length.toLocaleString()} เซลล์ที่ตรวจ</span><span><b>${errors.length}</b> จุดที่พบ</span>`;
+    if (!errors.length) {
+      ledgerPanel.innerHTML = `<div class="ledger-empty">ตรวจ ${lines.length} เซลล์แล้ว<br>ไม่พบคำผิด</div>`;
+      return;
+    }
+    ledgerPanel.innerHTML = errors.map((e, idx) => `
+      <div class="ledger-row no-click">
+        <span class="ledger-num">${String(idx + 1).padStart(2, '0')}</span>
+        <div class="ledger-body">
+          <div class="ledger-cell">${escapeHtml(e.cell || '')}</div>
+          <div class="ledger-fix"><span class="wrong">${escapeHtml(e.wrong || '')}</span><span class="arrow">→</span><span class="correct">${escapeHtml(e.correct || '')}</span></div>
+          <div class="ledger-reason">${escapeHtml(e.reason || '')}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  function attachErrHandlers(){
+    document.querySelectorAll('mark.err').forEach(el => {
+      el.addEventListener('click', ev => { ev.stopPropagation(); showTooltip(el); });
+    });
+  }
+
+  function showTooltip(el){
+    const idx = el.dataset.idx;
+    const e = currentErrors[idx];
+    if (!e) return;
+    let tip = document.getElementById('floatTip');
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.id = 'floatTip'; tip.className = 'float-tip';
+      document.body.appendChild(tip);
+    }
+    tip.innerHTML = `<div class="tip-correct">${escapeHtml(e.correct || '')}</div><div class="tip-reason">${escapeHtml(e.reason || '')}</div>`;
+    const rect = el.getBoundingClientRect();
+    tip.style.left = Math.min(rect.left + window.scrollX, window.innerWidth - 280) + 'px';
+    tip.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+    tip.style.display = 'block';
+  }
+
+  function hideTooltip(){
+    const tip = document.getElementById('floatTip');
+    if (tip) tip.style.display = 'none';
+  }
+
+  // ---------- dispatcher ----------
+  async function handleFile(file){
+    try {
+      showWorkspace();
+      setFileChip(file);
+      updateProgress('กำลังเริ่มตรวจ...');
+      const ext = file.name.split('.').pop().toLowerCase();
+      let result;
+      if (ext === 'docx') {
+        result = await handleDocx(file);
+        renderDocView(result.text, result.errors);
+        updateProgress('กำลังตรวจอำนาจอนุมัติและผู้ลงนาม...');
+        await referenceDataReady;
+        const compliance = await checkCompliance(result.text);
+        const findings = validateCompliance(compliance, result.text);
+        renderCompliance(findings);
+        logCheck({ fileName: file.name, fileType: ext, category: compliance && compliance.category, amount: compliance && compliance.amount_baht, errorCount: result.errors.length, findings });
+      } else if (ext === 'doc') {
+        result = await handleLegacyDoc(file);
+        renderDocView(result.text, result.errors);
+        updateProgress('กำลังตรวจอำนาจอนุมัติและผู้ลงนาม...');
+        await referenceDataReady;
+        const compliance = await checkCompliance(result.text);
+        const findings = validateCompliance(compliance, result.text);
+        renderCompliance(findings);
+        logCheck({ fileName: file.name, fileType: ext, category: compliance && compliance.category, amount: compliance && compliance.amount_baht, errorCount: result.errors.length, findings });
+      } else if (ext === 'xlsx' || ext === 'xls') {
+        result = await handleXlsx(file);
+        renderXlsxLedger(result.lines, result.errors);
+        logCheck({ fileName: file.name, fileType: ext, errorCount: result.errors.length });
+      } else if (ext === 'pdf') {
+        result = await handlePdf(file);
+        renderDocView(result.text, result.errors);
+        updateProgress('กำลังตรวจอำนาจอนุมัติและผู้ลงนาม...');
+        await referenceDataReady;
+        const compliance = await checkCompliance(result.text);
+        const findings = validateCompliance(compliance, result.text);
+        renderCompliance(findings);
+        logCheck({ fileName: file.name, fileType: ext, category: compliance && compliance.category, amount: compliance && compliance.amount_baht, errorCount: result.errors.length, findings });
+      } else if (['jpg', 'jpeg', 'png'].includes(ext)) {
+        result = await handleImage(file);
+        renderDocView(result.text, result.errors);
+        logCheck({ fileName: file.name, fileType: ext, errorCount: result.errors.length });
+      } else {
+        updateProgress('');
+        showErrorState(new Error('ไม่รองรับไฟล์ประเภทนี้ (' + ext + ')'));
+        return;
+      }
+      updateProgress('');
+    } catch (err) {
+      console.error(err);
+      updateProgress('');
+      showErrorState(err);
+    }
+  }
+
+  window.handleFile = handleFile;
+})();
+</script>
+</body>
+</html>
