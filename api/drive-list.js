@@ -1,25 +1,15 @@
 // api/drive-list.js
-// แสดงรายการไฟล์ในโฟลเดอร์ Google Drive ที่กำหนดไว้ (ใช้ Service Account อ่านอย่างเดียว)
-// ต้องตั้งค่า Environment Variables บน Vercel:
-//   GOOGLE_SERVICE_ACCOUNT_EMAIL  = อีเมลของ service account
-//   GOOGLE_SERVICE_ACCOUNT_KEY    = private key ของ service account (คง \n ไว้ตามที่ Google ให้มา)
-//   GOOGLE_DRIVE_FOLDER_ID        = ID ของโฟลเดอร์ที่แชร์ให้ service account แล้ว
+// แสดงรายการไฟล์ในโฟลเดอร์ Google Drive ที่กำหนดไว้ (อ่านอย่างเดียว ผ่าน OAuth refresh token)
+// ต้องตั้งค่า Environment Variables บน Vercel — ดูรายละเอียดใน api/_drive-auth.js
 
 const { google } = require('googleapis');
+const { getDriveAuth } = require('./_drive-auth');
 
 const SUPPORTED_EXPORT = {
   'application/vnd.google-apps.document': true,
   'application/vnd.google-apps.spreadsheet': true,
   'application/vnd.google-apps.presentation': true,
 };
-
-function getAuth() {
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const rawKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY || '';
-  const key = rawKey.replace(/\\n/g, '\n');
-  if (!email || !key) return null;
-  return new google.auth.JWT(email, null, key, ['https://www.googleapis.com/auth/drive.readonly']);
-}
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -28,10 +18,10 @@ module.exports = async (req, res) => {
   }
 
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-  const auth = getAuth();
+  const auth = getDriveAuth();
 
   if (!auth) {
-    res.status(500).json({ error: 'ยังไม่ได้ตั้งค่า GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_SERVICE_ACCOUNT_KEY บน Vercel' });
+    res.status(500).json({ error: 'ยังไม่ได้ตั้งค่า GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET / GOOGLE_OAUTH_REFRESH_TOKEN บน Vercel' });
     return;
   }
   if (!folderId) {

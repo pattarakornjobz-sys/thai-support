@@ -1,23 +1,16 @@
 // api/drive-file.js
 // ดึงเนื้อไฟล์เดี่ยวจาก Google Drive กลับมาเป็น base64 (ให้หน้าเว็บส่งต่อเข้า pipeline ตรวจเอกสารเดิม)
 // เอกสารแบบ Google Docs/Sheets/Slides (ไม่ใช่ไฟล์อัปโหลด) จะถูก export เป็น PDF ก่อนส่งกลับ
-// ต้องตั้งค่า Environment Variables ชุดเดียวกับ api/drive-list.js
+// ต้องตั้งค่า Environment Variables ชุดเดียวกับ api/drive-list.js — ดูรายละเอียดใน api/_drive-auth.js
 
 const { google } = require('googleapis');
+const { getDriveAuth } = require('./_drive-auth');
 
 const EXPORT_MIME = {
   'application/vnd.google-apps.document': 'application/pdf',
   'application/vnd.google-apps.spreadsheet': 'application/pdf',
   'application/vnd.google-apps.presentation': 'application/pdf',
 };
-
-function getAuth() {
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const rawKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY || '';
-  const key = rawKey.replace(/\\n/g, '\n');
-  if (!email || !key) return null;
-  return new google.auth.JWT(email, null, key, ['https://www.googleapis.com/auth/drive.readonly']);
-}
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -31,9 +24,9 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const auth = getAuth();
+  const auth = getDriveAuth();
   if (!auth) {
-    res.status(500).json({ error: 'ยังไม่ได้ตั้งค่า GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_SERVICE_ACCOUNT_KEY บน Vercel' });
+    res.status(500).json({ error: 'ยังไม่ได้ตั้งค่า GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET / GOOGLE_OAUTH_REFRESH_TOKEN บน Vercel' });
     return;
   }
 
